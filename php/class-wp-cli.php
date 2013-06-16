@@ -323,6 +323,33 @@ class WP_CLI {
 		$command->invoke( $final_args, $assoc_args );
 	}
 
+	public static function load_wordpress() {
+		// Explicitly globalize needed variables
+		global
+			$wpdb, $wp, $wp_rewrite, $wp_version,
+			$current_site, $current_blog,
+			$shortcode_tags;
+
+		eval( WP_CLI::$runner->get_wp_config_code() );
+
+		// Simulate a /wp-admin/ page load
+		$_SERVER['PHP_SELF'] = '/wp-admin/index.php';
+		define( 'WP_ADMIN', true );
+		define( 'WP_NETWORK_ADMIN', false );
+		define( 'WP_USER_ADMIN', false );
+
+		// Load Core, mu-plugins, plugins, themes etc.
+		require WP_CLI_ROOT . 'wp-settings-cli.php';
+
+		// Fix memory limit. See http://core.trac.wordpress.org/ticket/14889
+		@ini_set( 'memory_limit', -1 );
+
+		require ABSPATH . 'wp-admin/includes/admin.php';
+		do_action( 'admin_init' );
+
+		WP_CLI::$runner->after_wp_load();
+	}
+
 	// back-compat
 	static function out( $str ) {
 		echo $str;
